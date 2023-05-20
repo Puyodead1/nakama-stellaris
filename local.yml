@@ -1,0 +1,8 @@
+name: nakama1
+data_dir: "./data/"
+logger:
+  level: "DEBUG"
+runtime:
+  js_entrypoint: "stellaris/index.js"
+session:
+  token_expiry_sec: 7200
