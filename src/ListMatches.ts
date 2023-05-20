@@ -11,7 +11,10 @@ export function rpcListMatches(
     nk: nkruntime.Nakama,
     payload: string
 ): string {
-    const matches = nk.matchList(50, null, null, 0, 100, null);
-    logger.debug("matches: " + JSON.stringify(matches));
-    return JSON.stringify({ matches: matches });
+    const matchList = nk.matchList(50, null, null, 0, 100, null);
+    const matches: Record<string, object> = {};
+    for (const match of matchList) {
+        matches[match.matchId] = JSON.parse(match.label);
+    }
+    return JSON.stringify({ matches });
 }
