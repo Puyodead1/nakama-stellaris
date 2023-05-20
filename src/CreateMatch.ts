@@ -6,7 +6,7 @@ export interface RPCCreateMatchPayload {
     };
     description: string;
     game_type: string;
-    legacy_password: string;
+    legacy_password?: string;
     mod: string;
     platform: string;
     product: string;

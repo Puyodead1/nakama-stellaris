@@ -16,7 +16,7 @@ export interface LobbyMatchState extends nkruntime.MatchState {
     description: string;
     gameType: string;
     hostUserId: string;
-    password?: string;
+    password: string;
     platform: string;
     product: string;
     public: boolean;
@@ -53,7 +53,7 @@ export const MatchInit = function (
         description: params.description,
         gameType: "0",
         hostUserId: ctx.userId,
-        password: params.legacy_password,
+        password: params.legacy_password ?? "",
         platform: params.platform,
         product: params.product,
         public: params.public,
