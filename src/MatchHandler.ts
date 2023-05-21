@@ -1,11 +1,10 @@
 const tickRate = 10;
 const maxEmptyTicks = tickRate * 10; // tickRate * seconds
-const INGAME_OP_CODE = 8;
 
 export interface LobbyMatchState extends nkruntime.MatchState {
     players: { [userId: string]: PlayerState };
     playerCount: number;
-    gameState: GameState;
+    gameState: EGameState;
     emptyTicks: number;
 
     crossPlay: boolean;
@@ -29,10 +28,16 @@ export interface PlayerState {
     isReady: boolean;
 }
 
-export enum GameState {
+export enum EGameState {
+    InvalidStatus = "invalid",
     Lobby = "lobby",
-    LobbyReady = "ready",
-    InGame = "ingame",
+    Running = "ingame",
+    Custom = "custom",
+}
+
+export enum EOpCodes {
+    UpdateState = 8,
+    Unknown1 = 255,
 }
 
 export const MatchInit = function (
@@ -59,7 +64,7 @@ export const MatchInit = function (
         public: params.public,
         serverName: params.server_name,
         playerCount: 0,
-        gameState: GameState.Lobby,
+        gameState: EGameState.Lobby,
         emptyTicks: 0,
         version: params.version,
     };
@@ -138,7 +143,7 @@ export const MatchJoin = function (
 
     // If the match is full then update the state
     if (state.playerCount === state.customData.maxPlayers) {
-        state.gameState = GameState.LobbyReady;
+        state.gameState = EGameState.Running;
     }
 
     // Update the match label
@@ -154,7 +159,7 @@ export const MatchJoin = function (
         has_password: !!state.password,
         password: state.password,
         host_user_id: state.hostUserId,
-        open: state.gameState === GameState.LobbyReady ? false : true,
+        open: state.gameState === EGameState.Running ? false : true,
         platform: state.platform,
         presence_count: presences.length,
         product: state.product,
@@ -204,10 +209,17 @@ export const MatchLoop = function (
 ) {
     messages.forEach(function (message) {
         const data = new TextDecoder("utf-8").decode(message.data);
-        if (message.opCode === INGAME_OP_CODE) {
-            // state.players[message.sender.userId].isReady = true;
-            // Server recieves "ingame" from client, unknown exactly what this means though
+        if (message.opCode === EOpCodes.UpdateState) {
+            state.gameState = EGameState[data];
         }
+
+        // TODO: update match label?
+
+        // broadcast the state to all players
+        dispatcher.broadcastMessage(
+            EOpCodes.UpdateState,
+            new TextEncoder().encode(state.gameState.toString())
+        );
     });
 
     // If the match is empty, increment the empty ticks
