@@ -1,3 +1,5 @@
+import { merge } from "./util";
+
 const tickRate = 10;
 const maxEmptyTicks = tickRate * 10; // tickRate * seconds
 
@@ -21,6 +23,7 @@ export interface LobbyMatchState extends nkruntime.MatchState {
     public: boolean;
     serverName: string;
     version: string;
+    label: { [key: string]: any };
 }
 
 export interface PlayerState {
@@ -33,6 +36,10 @@ export enum EGameState {
     Lobby = "lobby",
     Running = "ingame",
     Custom = "custom",
+    "invalid" = InvalidStatus,
+    "lobby" = Lobby,
+    "ingame" = Running,
+    "custom" = Custom,
 }
 
 export enum EOpCodes {
@@ -67,10 +74,10 @@ export const MatchInit = function (
         gameState: EGameState.Lobby,
         emptyTicks: 0,
         version: params.version,
+        label: {},
     };
 
-    // Update the match label to surface important information for players who are searching for a match
-    const label = JSON.stringify({
+    state.label = {
         cross_play: state.crossPlay,
         custom_data: {
             host_country_id: state.customData.hostCountryId,
@@ -92,7 +99,10 @@ export const MatchInit = function (
         status: state.gameState,
         tags: [],
         version: state.version,
-    });
+    };
+
+    // Update the match label to surface important information for players who are searching for a match
+    const label = JSON.stringify(state.label);
 
     return {
         state,
@@ -141,35 +151,19 @@ export const MatchJoin = function (
         state.playerCount++;
     });
 
+    // TODO: is this what we're supposed to do?
     // If the match is full then update the state
     if (state.playerCount === state.customData.maxPlayers) {
         state.gameState = EGameState.Running;
     }
 
     // Update the match label
-    const label = JSON.stringify({
-        cross_play: state.crossPlay,
-        custom_data: {
-            host_country_id: state.customData.hostCountryId,
-            max_players: state.customData.maxPlayers.toString(),
-        },
-        description: state.description,
-        game_name: "stellaris",
-        game_type: state.gameType,
-        has_password: !!state.password,
-        password: state.password,
-        host_user_id: state.hostUserId,
-        open: state.gameState === EGameState.Running ? false : true,
-        platform: state.platform,
-        presence_count: presences.length,
-        product: state.product,
-        public: state.public,
-        senario: "",
-        server_name: state.serverName,
-        status: state.gameState,
-        tags: [],
-        version: state.version,
-    });
+    const label = JSON.stringify(
+        merge(state.label, {
+            open: state.gameState === EGameState.Running,
+            presence_count: presences.length,
+        })
+    );
 
     dispatcher.matchLabelUpdate(label);
 
@@ -208,18 +202,8 @@ export const MatchLoop = function (
     messages: nkruntime.MatchMessage[]
 ) {
     messages.forEach(function (message) {
-        const data = new TextDecoder("utf-8").decode(message.data);
-        if (message.opCode === EOpCodes.UpdateState) {
-            state.gameState = EGameState[data];
-        }
-
-        // TODO: update match label?
-
-        // broadcast the state to all players
-        dispatcher.broadcastMessage(
-            EOpCodes.UpdateState,
-            new TextEncoder().encode(state.gameState.toString())
-        );
+        // TODO: handle opcode 8
+        // TODO: handle opcode 255
     });
 
     // If the match is empty, increment the empty ticks
